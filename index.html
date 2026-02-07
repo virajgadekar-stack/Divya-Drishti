@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Divya Drishti | Farmer Onboarding</title>
+    <title>Divya Drishti | Smart Farmer App</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -72,7 +72,10 @@
             border-radius: 30px; font-size: 16px; font-weight: bold;
             width: 100%; margin-top: 25px; cursor: pointer;
             box-shadow: 0 5px 15px rgba(46, 125, 50, 0.3);
+            transition: transform 0.2s;
         }
+        .btn-primary:active { transform: scale(0.98); }
+        
         .btn-outline {
             background: transparent; border: 2px solid var(--primary);
             color: var(--primary); padding: 15px; border-radius: 30px;
@@ -84,7 +87,7 @@
             margin-bottom: 15px; cursor: pointer; display: inline-block;
         }
 
-        /* --- DASHBOARD GRID --- */
+        /* --- DASHBOARD ICONS --- */
         .dashboard-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;
         }
@@ -109,10 +112,7 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         /* --- SCREENS --- */
-        #dashboard-screen { display: none; }
-        #scan-interface { display: none; } 
-        #scan-result-screen { display: none; }
-        #advisor-interface { display: none; }
+        #dashboard-screen, #scan-interface, #scan-result-screen, #advisor-interface { display: none; }
         
         /* --- RESULTS --- */
         #success-msg {
@@ -129,6 +129,8 @@
         .result-large { padding: 30px; text-align: center; border-radius: 15px; margin-bottom: 20px; }
         .safe { background: #e8f5e9; border: 2px solid green; color: green; }
         .fake { background: #ffebee; border: 2px solid red; color: red; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -206,12 +208,9 @@
         <div id="scan-result-screen">
             <div class="card">
                 <h3 style="text-align: center;">Scan Results</h3>
-                
                 <label>Scanned Code Reading:</label>
                 <div id="res-code-top" class="scan-code-display">Pending...</div>
-                
                 <div id="res-box-large" class="result-large">Verifying...</div>
-                
                 <button class="btn-outline" onclick="exitScanResult()">DONE / SCAN NEXT</button>
             </div>
         </div>
@@ -221,13 +220,11 @@
             <div class="card">
                 <h3>🌾 Agri-Gyani Advisor</h3>
                 <p style="font-size:13px; color:#666;">Ask me about crop diseases, market prices, or weather.</p>
-                
                 <div class="voice-search-container">
                     <input type="text" id="advice-query" placeholder="Type or use Mic...">
                     <button id="mic-btn" class="mic-btn" onclick="startVoiceInput()">🎤</button>
                 </div>
-
-                <button class="btn-primary" onclick="askAdvisor()">GET ADVICE</button>
+                <button class="btn-primary" onclick="getAdvice()">GET ADVICE</button>
                 <div id="advice-result" style="margin-top:15px; font-weight:500; white-space: pre-line;"></div>
             </div>
         </div>
@@ -235,32 +232,55 @@
     </div>
 
     <script>
-        const SERVER_URL = "http://127.0.0.1:5000";
+        // --- 1. LOCAL DATABASE SIMULATION ---
+        const PRODUCT_DB = {
+            "DATA-TRUST-101": {
+                status: "SAFE",
+                name: "Mahyco Cotton Seeds (Bt)",
+                message: "✅ GENUINE. Batch #MH-2025 verified.",
+                expiry: "Dec 2025"
+            },
+            "FAKE-PESTICIDE-99": {
+                status: "FAKE",
+                name: "Counterfeit / Unknown",
+                message: "❌ WARNING: Fake Product Detected!",
+                expiry: "N/A"
+            }
+        };
 
-        // --- LOCATION & DATA LOGIC ---
-        const locationData = {
+        const LOCATION_DATA = {
             "Maharashtra": { "Pune": ["Haveli", "Baramati"], "Nashik": ["Malegaon", "Sinnar"] },
             "Gujarat": { "Ahmedabad": ["Sanand", "Dholka"], "Surat": ["Bardoli", "Mandvi"] },
             "Punjab": { "Ludhiana": ["Khanna", "Jagraon"], "Amritsar": ["Ajnala", "Baba Bakala"] }
         };
 
+        // --- 2. INITIALIZATION ---
         window.onload = function() {
+            // Check if user is already registered in LocalStorage
+            const savedUser = localStorage.getItem("farmerUser");
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                loginUser(user.name, user.village);
+            }
+
+            // Load States
             const stateSelect = document.getElementById("state-select");
-            for (let state in locationData) {
+            for (let state in LOCATION_DATA) {
                 let opt = document.createElement("option"); opt.value = state; opt.text = state;
                 stateSelect.appendChild(opt);
             }
         };
 
+        // --- 3. REGISTRATION LOGIC ---
         function loadDistricts() {
             const s = document.getElementById("state-select").value;
             const dSel = document.getElementById("district-select");
             const vSel = document.getElementById("village-select");
             dSel.innerHTML = '<option value="">-- Select District --</option>'; vSel.innerHTML = '<option value="">-- Select Village --</option>';
             vSel.disabled = true;
-            if (s && locationData[s]) {
+            if (s && LOCATION_DATA[s]) {
                 dSel.disabled = false;
-                for (let d in locationData[s]) {
+                for (let d in LOCATION_DATA[s]) {
                     let opt = document.createElement("option"); opt.value = d; opt.text = d; dSel.appendChild(opt);
                 }
             } else { dSel.disabled = true; }
@@ -271,9 +291,9 @@
             const d = document.getElementById("district-select").value;
             const vSel = document.getElementById("village-select");
             vSel.innerHTML = '<option value="">-- Select Village --</option>';
-            if (s && d && locationData[s][d]) {
+            if (s && d && LOCATION_DATA[s][d]) {
                 vSel.disabled = false;
-                locationData[s][d].forEach(v => {
+                LOCATION_DATA[s][d].forEach(v => {
                     let opt = document.createElement("option"); opt.value = v; opt.text = v; vSel.appendChild(opt);
                 });
             } else { vSel.disabled = true; }
@@ -289,38 +309,40 @@
             }
         }
 
-        async function submitRegistration() {
+        function submitRegistration() {
             const name = document.getElementById("fname").value;
             const v = document.getElementById("village-select").value;
-            if (!name || !v) { alert("Fill all details"); return; }
             
-            try {
-                await fetch(`${SERVER_URL}/register`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, village: v, crops: [] })
-                });
-                document.getElementById("success-msg").style.display = "flex";
-                setTimeout(() => {
-                    document.getElementById("success-msg").style.display = "none";
-                    document.getElementById("login-screen").style.display = "none";
-                    document.getElementById("dashboard-screen").style.display = "block";
-                    document.getElementById("welcome-text").innerText = `Namaste, ${name} ji!`;
-                    document.getElementById("location-text").innerText = `📍 ${v}`;
-                }, 2000);
-            } catch (e) { alert("Server error"); }
+            if (!name || !v) { alert("Please fill all details!"); return; }
+
+            // Save to LocalStorage (Persist Data)
+            const userData = { name: name, village: v };
+            localStorage.setItem("farmerUser", JSON.stringify(userData));
+
+            // Show Success UI
+            document.getElementById("success-msg").style.display = "flex";
+            setTimeout(() => {
+                document.getElementById("success-msg").style.display = "none";
+                loginUser(name, v);
+            }, 2000);
         }
 
-        // --- NAVIGATION & CLEANUP ---
-        let html5QrcodeScanner = null; // Global variable
+        function loginUser(name, village) {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("dashboard-screen").style.display = "block";
+            document.getElementById("welcome-text").innerText = `Namaste, ${name} ji!`;
+            document.getElementById("location-text").innerText = `📍 ${village}`;
+        }
+
+        // --- 4. NAVIGATION ---
+        let html5QrcodeScanner = null;
 
         async function goHome() {
-            // Force stop scanner if running
+            // Stop Scanner if active
             if (html5QrcodeScanner) {
-                try { await html5QrcodeScanner.stop(); await html5QrcodeScanner.clear(); } 
-                catch(e) { console.log("Scanner stop cleanup"); }
+                try { await html5QrcodeScanner.stop(); await html5QrcodeScanner.clear(); } catch(e){}
                 html5QrcodeScanner = null;
             }
-
             document.getElementById("scan-interface").style.display = "none";
             document.getElementById("advisor-interface").style.display = "none";
             document.getElementById("dashboard-screen").style.display = "block";
@@ -329,7 +351,6 @@
         function openScanner() {
             document.getElementById("dashboard-screen").style.display = "none";
             document.getElementById("scan-interface").style.display = "block";
-            // Ensure button is visible
             document.getElementById("scan-btn").style.display = "block";
         }
 
@@ -338,88 +359,74 @@
             document.getElementById("advisor-interface").style.display = "block";
         }
 
-        // --- ROBUST SCANNER LOGIC ---
+        // --- 5. SCANNER LOGIC (Robust) ---
         async function startScanner() {
             document.getElementById('scan-btn').style.display = 'none';
-
-            // 1. Cleanup old instance if exists
-            if (html5QrcodeScanner) {
-                try { await html5QrcodeScanner.clear(); } catch(e){}
-            }
-
-            // 2. Initialize new instance
+            if (html5QrcodeScanner) { try { await html5QrcodeScanner.clear(); } catch(e){} }
+            
             html5QrcodeScanner = new Html5Qrcode("reader");
-
-            // 3. Start Camera
             try {
                 await html5QrcodeScanner.start(
                     { facingMode: "environment" }, 
                     { fps: 10, qrbox: 250 },
-                    (decodedText) => {
-                        // Success!
-                        handleScanSuccess(decodedText);
-                    },
-                    (errorMessage) => { 
-                        // Scanning... ignore errors
-                    }
+                    (decodedText) => { handleScanSuccess(decodedText); },
+                    (errorMessage) => { /* scanning... */ }
                 );
             } catch (err) {
-                console.error(err);
-                alert("Camera error. Please allow permissions.");
+                alert("Camera Error: " + err);
                 document.getElementById('scan-btn').style.display = 'block';
             }
         }
 
         async function handleScanSuccess(code) {
-            // Stop camera
             if (html5QrcodeScanner) {
                 await html5QrcodeScanner.stop();
                 await html5QrcodeScanner.clear();
-                html5QrcodeScanner = null; // Reset global
+                html5QrcodeScanner = null;
             }
-            
-            // Switch to Result Interface
+
             document.getElementById("scan-interface").style.display = "none";
             document.getElementById("scan-result-screen").style.display = "block";
             
-            // Display Logic
+            // Logic moved from Python to JS
             document.getElementById("res-code-top").innerText = code;
             const resBox = document.getElementById("res-box-large");
+            
+            // Artificial Delay for "Verifying..." feel
             resBox.className = "result-large";
             resBox.innerHTML = "<h3>🔄 Verifying...</h3>";
-
-            // Backend Call
-            try {
-                const response = await fetch(`${SERVER_URL}/scan`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({code: code})
-                });
-                const data = await response.json();
-                
-                if(data.status === "SAFE") {
-                    resBox.className = "result-large safe";
-                    resBox.innerHTML = `<h2 style="margin:0">✅ GENUINE</h2><h4>${data.name}</h4><p>${data.message}</p>`;
+            
+            setTimeout(() => {
+                const data = PRODUCT_DB[code];
+                if (data) {
+                    if (data.status === "SAFE") {
+                        resBox.className = "result-large safe";
+                        resBox.innerHTML = `<h2 style="margin:0">✅ GENUINE</h2><h4>${data.name}</h4><p>${data.message}</p><small>Expiry: ${data.expiry}</small>`;
+                    } else {
+                        resBox.className = "result-large fake";
+                        resBox.innerHTML = `<h2 style="margin:0">❌ ALERT</h2><h4>${data.name}</h4><p>${data.message}</p>`;
+                    }
                 } else {
-                    resBox.className = "result-large fake";
-                    resBox.innerHTML = `<h2 style="margin:0">❌ ALERT</h2><h4>${data.name}</h4><p>${data.message}</p>`;
+                    resBox.className = "result-large";
+                    resBox.style.background = "#fff3cd"; // Yellow warning
+                    resBox.style.border = "2px solid #ffc107";
+                    resBox.style.color = "#856404";
+                    resBox.innerHTML = `<h2 style="margin:0">⚠️ UNKNOWN</h2><p>Product code not found in database.</p>`;
                 }
-            } catch (e) {
-                resBox.innerHTML = "Error connecting to server.";
-            }
+            }, 800);
         }
 
         function exitScanResult() {
-            // Close result, go back to Scan Interface (Ready state)
             document.getElementById("scan-result-screen").style.display = "none";
-            openScanner(); 
+            openScanner(); // Ready for next scan
         }
 
-        // --- VOICE SEARCH ---
+        // --- 6. ADVISOR & VOICE LOGIC ---
         function startVoiceInput() {
-            if (!('webkitSpeechRecognition' in window)) { alert("Use Chrome for Voice."); return; }
+            if (!('webkitSpeechRecognition' in window)) { alert("Voice not supported in this browser."); return; }
             
             const recognition = new webkitSpeechRecognition();
-            recognition.lang = 'en-US';
+            recognition.lang = 'en-US'; 
             recognition.continuous = false;
             
             const micBtn = document.getElementById("mic-btn");
@@ -431,27 +438,34 @@
                 const txt = event.results[0][0].transcript;
                 document.getElementById("advice-query").value = txt;
                 micBtn.classList.remove("mic-listening");
-                askAdvisor();
+                getAdvice();
             };
 
             recognition.onerror = function() { micBtn.classList.remove("mic-listening"); };
             recognition.onend = function() { micBtn.classList.remove("mic-listening"); };
-            
             recognition.start();
         }
 
-        async function askAdvisor() {
-            const q = document.getElementById("advice-query").value;
+        function getAdvice() {
+            const query = document.getElementById("advice-query").value.toLowerCase();
             const res = document.getElementById("advice-result");
+            
             res.innerHTML = "Thinking...";
-            try {
-                const response = await fetch(`${SERVER_URL}/ask`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({query: q})
-                });
-                const data = await response.json();
-                res.innerHTML = data.advice;
-            } catch(e) { res.innerHTML = "Server Error."; }
+            
+            setTimeout(() => {
+                let advice = "";
+                // Logic moved from Python to JS
+                if (query.includes("yellow") || query.includes("leaf")) {
+                    advice = "🍂 <b>Diagnosis:</b> Nitrogen Deficiency.\n👉 <b>Remedy:</b> Apply Urea (20kg/acre) or spray NPK 19:19:19.";
+                } else if (query.includes("price") || query.includes("rate")) {
+                    advice = "💰 <b>Market Intelligence:</b>\nGovt Rate: ₹266 per bag.\n⚠️ <b>Alert:</b> Do not pay more than ₹270.";
+                } else if (query.includes("weather")) {
+                    advice = "🌤️ <b>Weather Alert:</b>\nLight rain expected in next 24 hours. Hold irrigation.";
+                } else {
+                    advice = "🙏 I am your Agri-Gyani.\nAsk about 'Yellow leaves', 'Fertilizer Price', or 'Weather'.";
+                }
+                res.innerHTML = advice;
+            }, 500);
         }
     </script>
 </body>
