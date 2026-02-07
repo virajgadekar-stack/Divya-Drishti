@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divya Drishti | Farmer Onboarding</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- THEME --- */
+        :root {
+            --primary: #2e7d32;
+            --gold: #ffb300;
+            --bg: #f1f8e9;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: #1b5e20;
+        }
+
+        /* --- HEADER --- */
+        header { text-align: center; margin-top: 30px; margin-bottom: 20px; }
+        .shield-logo {
+            width: 60px; height: 70px;
+            background: linear-gradient(135deg, #ffb300, #ff8f00);
+            border-radius: 5px 5px 30px 30px;
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            font-size: 35px; color: white;
+            box-shadow: 0 4px 15px rgba(255, 143, 0, 0.4);
+            border: 3px solid rgba(255,255,255,0.4);
+        }
+        .shield-logo::after { content: '👁️'; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
+        h1 { margin: 10px 0 5px; font-size: 24px; color: var(--primary); }
+
+        /* --- CONTAINERS --- */
+        .container { width: 90%; max-width: 450px; padding-bottom: 50px; }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* --- FORM ELEMENTS --- */
+        label { font-size: 14px; font-weight: 600; color: #555; margin-top: 15px; display: block; }
+        input, select {
+            width: 100%; padding: 12px; margin-top: 5px;
+            border: 2px solid #c8e6c9; border-radius: 10px;
+            font-size: 15px; box-sizing: border-box;
+            font-family: 'Poppins', sans-serif; background: #fff;
+        }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
+        .crop-row {
+            display: flex; gap: 10px; margin-top: 10px;
+            background: #f9fbe7; padding: 10px; border-radius: 10px; border: 1px dashed #c0ca33;
+        }
+        
+        /* --- BUTTONS --- */
+        .btn-primary {
+            background: linear-gradient(to right, #2e7d32, #4caf50);
+            color: white; border: none; padding: 15px;
+            border-radius: 30px; font-size: 16px; font-weight: bold;
+            width: 100%; margin-top: 25px; cursor: pointer;
+            box-shadow: 0 5px 15px rgba(46, 125, 50, 0.3);
+        }
+        .btn-outline {
+            background: transparent; border: 2px solid var(--primary);
+            color: var(--primary); padding: 15px; border-radius: 30px;
+            font-size: 16px; font-weight: bold; width: 100%; margin-top: 15px; cursor: pointer;
+        }
+        .back-btn {
+            background: #ddd; border: none; color: #333;
+            padding: 8px 15px; border-radius: 20px; font-weight: 600;
+            margin-bottom: 15px; cursor: pointer; display: inline-block;
+        }
+
+        /* --- DASHBOARD GRID --- */
+        .dashboard-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;
+        }
+        .flashy-icon {
+            background: white; border-radius: 20px; padding: 20px; text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1); cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+        }
+        .flashy-icon:hover { transform: scale(1.1); box-shadow: 0 15px 30px rgba(46, 125, 50, 0.25); border-color: var(--primary); }
+        .icon-symbol { font-size: 40px; display: block; margin-bottom: 10px; }
+        .icon-title { font-weight: 700; color: var(--primary); font-size: 14px; }
+
+        /* --- VOICE SEARCH --- */
+        .voice-search-container { display: flex; align-items: center; gap: 5px; position: relative; }
+        .mic-btn {
+            background: var(--gold); border: none; width: 45px; height: 45px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            font-size: 20px; color: white; box-shadow: 0 4px 10px rgba(255, 179, 0, 0.4); margin-top: 5px;
+        }
+        .mic-listening { animation: pulse 1s infinite; background: red; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* --- SCREENS --- */
+        #dashboard-screen { display: none; }
+        #scan-interface { display: none; } 
+        #scan-result-screen { display: none; }
+        #advisor-interface { display: none; }
+        
+        /* --- RESULTS --- */
+        #success-msg {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(46, 125, 50, 0.95); z-index: 999;
+            align-items: center; justify-content: center; flex-direction: column;
+            color: white; text-align: center;
+        }
+        .scan-code-display {
+            background: #333; color: #0f0; font-family: monospace;
+            padding: 10px; border-radius: 5px; margin-bottom: 20px;
+            text-align: center; font-size: 1.2em; word-break: break-all;
+        }
+        .result-large { padding: 30px; text-align: center; border-radius: 15px; margin-bottom: 20px; }
+        .safe { background: #e8f5e9; border: 2px solid green; color: green; }
+        .fake { background: #ffebee; border: 2px solid red; color: red; }
+    </style>
+</head>
+<body>
+
+    <div id="success-msg">
+        <div class="shield-logo" style="transform: scale(1.5); margin-bottom: 20px;"></div>
+        <h2 style="margin:0;">REGISTRATION SUCCESSFUL!</h2>
+        <p>Redirecting to Dashboard...</p>
+    </div>
+
+    <header>
+        <div class="shield-logo"></div>
+        <h1>Divya Drishti</h1>
+        <div style="font-size: 12px; opacity: 0.8;">Secure. Smart. Sustainable.</div>
+    </header>
+
+    <div class="container">
+        
+        <div id="login-screen" class="card">
+            <h3 style="margin-top:0; text-align:center;">Farmer Registration</h3>
+            
+            <label>Full Name</label>
+            <input type="text" id="fname" placeholder="Enter Farmer Name">
+
+            <label>State</label>
+            <select id="state-select" onchange="loadDistricts()">
+                <option value="">-- Select State --</option>
+            </select>
+
+            <label>District</label>
+            <select id="district-select" onchange="loadVillages()" disabled>
+                <option value="">-- Select District --</option>
+            </select>
+
+            <label>Village / Town</label>
+            <select id="village-select" disabled>
+                <option value="">-- Select Village --</option>
+            </select>
+
+            <label>Number of Crops</label>
+            <input type="number" id="crop-count" min="1" max="5" placeholder="e.g. 2" oninput="generateCropFields()">
+            <div id="dynamic-crop-area"></div>
+
+            <button class="btn-primary" onclick="submitRegistration()">REGISTER & LOGIN</button>
+        </div>
+
+        <div id="dashboard-screen">
+            <div class="card" style="background: #2e7d32; color: white; margin-bottom: 20px;">
+                <h3 id="welcome-text" style="color:white; margin:0;">Welcome!</h3>
+                <p id="location-text" style="margin:5px 0 0; opacity:0.8; font-size:13px;">Location: Unknown</p>
+            </div>
+
+            <h3 style="text-align: center; margin-bottom: 10px;">Services</h3>
+            <div class="dashboard-grid">
+                <div class="flashy-icon" onclick="openScanner()">
+                    <span class="icon-symbol">📷</span>
+                    <div class="icon-title">SATYA SCAN</div>
+                </div>
+                <div class="flashy-icon" onclick="openAdvisor()">
+                    <span class="icon-symbol">🌾</span>
+                    <div class="icon-title">AGRI GYANI</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="scan-interface">
+            <button class="back-btn" onclick="goHome()">← Back to Home</button>
+            <div class="card">
+                <h3>📷 Satya Scan</h3>
+                <div id="reader" style="width:100%;"></div>
+                <button class="btn-primary" id="scan-btn" onclick="startScanner()">START SCANNING</button>
+            </div>
+        </div>
+
+        <div id="scan-result-screen">
+            <div class="card">
+                <h3 style="text-align: center;">Scan Results</h3>
+                
+                <label>Scanned Code Reading:</label>
+                <div id="res-code-top" class="scan-code-display">Pending...</div>
+                
+                <div id="res-box-large" class="result-large">Verifying...</div>
+                
+                <button class="btn-outline" onclick="exitScanResult()">DONE / SCAN NEXT</button>
+            </div>
+        </div>
+
+        <div id="advisor-interface">
+            <button class="back-btn" onclick="goHome()">← Back to Home</button>
+            <div class="card">
+                <h3>🌾 Agri-Gyani Advisor</h3>
+                <p style="font-size:13px; color:#666;">Ask me about crop diseases, market prices, or weather.</p>
+                
+                <div class="voice-search-container">
+                    <input type="text" id="advice-query" placeholder="Type or use Mic...">
+                    <button id="mic-btn" class="mic-btn" onclick="startVoiceInput()">🎤</button>
+                </div>
+
+                <button class="btn-primary" onclick="askAdvisor()">GET ADVICE</button>
+                <div id="advice-result" style="margin-top:15px; font-weight:500; white-space: pre-line;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const SERVER_URL = "http://127.0.0.1:5000";
+
+        // --- LOCATION & DATA LOGIC ---
+        const locationData = {
+            "Maharashtra": { "Pune": ["Haveli", "Baramati"], "Nashik": ["Malegaon", "Sinnar"] },
+            "Gujarat": { "Ahmedabad": ["Sanand", "Dholka"], "Surat": ["Bardoli", "Mandvi"] },
+            "Punjab": { "Ludhiana": ["Khanna", "Jagraon"], "Amritsar": ["Ajnala", "Baba Bakala"] }
+        };
+
+        window.onload = function() {
+            const stateSelect = document.getElementById("state-select");
+            for (let state in locationData) {
+                let opt = document.createElement("option"); opt.value = state; opt.text = state;
+                stateSelect.appendChild(opt);
+            }
+        };
+
+        function loadDistricts() {
+            const s = document.getElementById("state-select").value;
+            const dSel = document.getElementById("district-select");
+            const vSel = document.getElementById("village-select");
+            dSel.innerHTML = '<option value="">-- Select District --</option>'; vSel.innerHTML = '<option value="">-- Select Village --</option>';
+            vSel.disabled = true;
+            if (s && locationData[s]) {
+                dSel.disabled = false;
+                for (let d in locationData[s]) {
+                    let opt = document.createElement("option"); opt.value = d; opt.text = d; dSel.appendChild(opt);
+                }
+            } else { dSel.disabled = true; }
+        }
+
+        function loadVillages() {
+            const s = document.getElementById("state-select").value;
+            const d = document.getElementById("district-select").value;
+            const vSel = document.getElementById("village-select");
+            vSel.innerHTML = '<option value="">-- Select Village --</option>';
+            if (s && d && locationData[s][d]) {
+                vSel.disabled = false;
+                locationData[s][d].forEach(v => {
+                    let opt = document.createElement("option"); opt.value = v; opt.text = v; vSel.appendChild(opt);
+                });
+            } else { vSel.disabled = true; }
+        }
+
+        function generateCropFields() {
+            const c = document.getElementById("crop-count").value;
+            const con = document.getElementById("dynamic-crop-area"); con.innerHTML = "";
+            if (c > 0 && c <= 10) {
+                for (let i = 1; i <= c; i++) {
+                    con.innerHTML += `<div class="crop-row"><div style="flex:2"><label style="margin:0;font-size:10px">Crop ${i}</label><input class="crop-name"></div><div style="flex:1"><label style="margin:0;font-size:10px">Acres</label><input type="number" class="crop-area"></div></div>`;
+                }
+            }
+        }
+
+        async function submitRegistration() {
+            const name = document.getElementById("fname").value;
+            const v = document.getElementById("village-select").value;
+            if (!name || !v) { alert("Fill all details"); return; }
+            
+            try {
+                await fetch(`${SERVER_URL}/register`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, village: v, crops: [] })
+                });
+                document.getElementById("success-msg").style.display = "flex";
+                setTimeout(() => {
+                    document.getElementById("success-msg").style.display = "none";
+                    document.getElementById("login-screen").style.display = "none";
+                    document.getElementById("dashboard-screen").style.display = "block";
+                    document.getElementById("welcome-text").innerText = `Namaste, ${name} ji!`;
+                    document.getElementById("location-text").innerText = `📍 ${v}`;
+                }, 2000);
+            } catch (e) { alert("Server error"); }
+        }
+
+        // --- NAVIGATION & CLEANUP ---
+        let html5QrcodeScanner = null; // Global variable
+
+        async function goHome() {
+            // Force stop scanner if running
+            if (html5QrcodeScanner) {
+                try { await html5QrcodeScanner.stop(); await html5QrcodeScanner.clear(); } 
+                catch(e) { console.log("Scanner stop cleanup"); }
+                html5QrcodeScanner = null;
+            }
+
+            document.getElementById("scan-interface").style.display = "none";
+            document.getElementById("advisor-interface").style.display = "none";
+            document.getElementById("dashboard-screen").style.display = "block";
+        }
+
+        function openScanner() {
+            document.getElementById("dashboard-screen").style.display = "none";
+            document.getElementById("scan-interface").style.display = "block";
+            // Ensure button is visible
+            document.getElementById("scan-btn").style.display = "block";
+        }
+
+        function openAdvisor() {
+            document.getElementById("dashboard-screen").style.display = "none";
+            document.getElementById("advisor-interface").style.display = "block";
+        }
+
+        // --- ROBUST SCANNER LOGIC ---
+        async function startScanner() {
+            document.getElementById('scan-btn').style.display = 'none';
+
+            // 1. Cleanup old instance if exists
+            if (html5QrcodeScanner) {
+                try { await html5QrcodeScanner.clear(); } catch(e){}
+            }
+
+            // 2. Initialize new instance
+            html5QrcodeScanner = new Html5Qrcode("reader");
+
+            // 3. Start Camera
+            try {
+                await html5QrcodeScanner.start(
+                    { facingMode: "environment" }, 
+                    { fps: 10, qrbox: 250 },
+                    (decodedText) => {
+                        // Success!
+                        handleScanSuccess(decodedText);
+                    },
+                    (errorMessage) => { 
+                        // Scanning... ignore errors
+                    }
+                );
+            } catch (err) {
+                console.error(err);
+                alert("Camera error. Please allow permissions.");
+                document.getElementById('scan-btn').style.display = 'block';
+            }
+        }
+
+        async function handleScanSuccess(code) {
+            // Stop camera
+            if (html5QrcodeScanner) {
+                await html5QrcodeScanner.stop();
+                await html5QrcodeScanner.clear();
+                html5QrcodeScanner = null; // Reset global
+            }
+            
+            // Switch to Result Interface
+            document.getElementById("scan-interface").style.display = "none";
+            document.getElementById("scan-result-screen").style.display = "block";
+            
+            // Display Logic
+            document.getElementById("res-code-top").innerText = code;
+            const resBox = document.getElementById("res-box-large");
+            resBox.className = "result-large";
+            resBox.innerHTML = "<h3>🔄 Verifying...</h3>";
+
+            // Backend Call
+            try {
+                const response = await fetch(`${SERVER_URL}/scan`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code: code})
+                });
+                const data = await response.json();
+                
+                if(data.status === "SAFE") {
+                    resBox.className = "result-large safe";
+                    resBox.innerHTML = `<h2 style="margin:0">✅ GENUINE</h2><h4>${data.name}</h4><p>${data.message}</p>`;
+                } else {
+                    resBox.className = "result-large fake";
+                    resBox.innerHTML = `<h2 style="margin:0">❌ ALERT</h2><h4>${data.name}</h4><p>${data.message}</p>`;
+                }
+            } catch (e) {
+                resBox.innerHTML = "Error connecting to server.";
+            }
+        }
+
+        function exitScanResult() {
+            // Close result, go back to Scan Interface (Ready state)
+            document.getElementById("scan-result-screen").style.display = "none";
+            openScanner(); 
+        }
+
+        // --- VOICE SEARCH ---
+        function startVoiceInput() {
+            if (!('webkitSpeechRecognition' in window)) { alert("Use Chrome for Voice."); return; }
+            
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.continuous = false;
+            
+            const micBtn = document.getElementById("mic-btn");
+            micBtn.classList.add("mic-listening");
+
+            recognition.onstart = function() { document.getElementById("advice-query").placeholder = "Listening..."; };
+            
+            recognition.onresult = function(event) {
+                const txt = event.results[0][0].transcript;
+                document.getElementById("advice-query").value = txt;
+                micBtn.classList.remove("mic-listening");
+                askAdvisor();
+            };
+
+            recognition.onerror = function() { micBtn.classList.remove("mic-listening"); };
+            recognition.onend = function() { micBtn.classList.remove("mic-listening"); };
+            
+            recognition.start();
+        }
+
+        async function askAdvisor() {
+            const q = document.getElementById("advice-query").value;
+            const res = document.getElementById("advice-result");
+            res.innerHTML = "Thinking...";
+            try {
+                const response = await fetch(`${SERVER_URL}/ask`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: q})
+                });
+                const data = await response.json();
+                res.innerHTML = data.advice;
+            } catch(e) { res.innerHTML = "Server Error."; }
+        }
+    </script>
+</body>
+</html>
